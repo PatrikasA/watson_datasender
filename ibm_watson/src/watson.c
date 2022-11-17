@@ -1,55 +1,7 @@
-#include <stdio.h>
-#include <signal.h>
-#include <memory.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include "iotp_device.h"
+#include "watson.h"
 
-char *configFilePath = NULL;
-volatile int interrupt = 0;
-char *progname = "watson";
 int useEnv = 0;
 int testCycle = 0;
-
-/* Usage text */
-void usage(void) {
-    fprintf(stderr, "Usage: %s --config config_file_path\n", progname);
-    exit(1);
-}
-
-/* Signal handler - to support CTRL-C to quit */
-void sigHandler(int signo) {
-    signal(SIGINT, NULL);
-    fprintf(stdout, "Received signal: %d\n", signo);
-    interrupt = 1;
-}
-
-/* Get and process command line options */
-void getopts(int argc, char** argv)
-{
-    int count = 1;
-
-    while (count < argc)
-    {
-        if (strcmp(argv[count], "--config") == 0)
-        {
-            if (++count < argc)
-                configFilePath = argv[count];
-            else
-                usage();
-        }
-        if (strcmp(argv[count], "--useEnv") == 0) {
-            useEnv = 1;
-        }
-        if (strcmp(argv[count], "--testCycle") == 0) {
-            if (++count < argc)
-                testCycle = atoi(argv[count]);
-            else
-                usage();
-        }
-        count++;
-    }
-}
 
 /* 
  * Device command callback function
@@ -81,36 +33,23 @@ void MQTTTraceCallback (int level, char * message)
     fflush(stdout);
 }
 
-/* Main program */
-int main(int argc, char *argv[])
+/* function that sets up connection to device */
+int init(IoTPConfig* config, IoTPDevice* device, char* configFilePath)
 {
     int rc = 0;
     int cycle = 0;
-
-    /* 
-     * DEV_NOTES:
-     * Specifiy variable for WIoT client object 
-     */
-    IoTPConfig *config = NULL;
-    IoTPDevice *device = NULL;
-
-    /* check for args */
-    if ( argc < 2 )
-        usage();
-
-    /* Set signal handlers */
-    signal(SIGINT, sigHandler);
-    signal(SIGTERM, sigHandler);
-
-    /* get argument options */
-    getopts(argc, argv);
-
+    
     /* Set IoTP Client log handler */
+    
     rc = IoTPConfig_setLogHandler(IoTPLog_FileDescriptor, stdout);
     if ( rc != 0 ) {
         fprintf(stderr, "WARN: Failed to set IoTP Client log handler: rc=%d\n", rc);
         exit(1);
     }
+    
+
+
+    
 
     /* Create IoTPConfig object using configuration options defined in the configuration file. */
     rc = IoTPConfig_create(&config, configFilePath);
@@ -151,37 +90,20 @@ int main(int argc, char *argv[])
      * how to process device commands received from WIoTP.
      */
     IoTPDevice_setCommandsHandler(device, deviceCommandCallback);
-
+    
     /*
      * Invoke device command subscription API IoTPDevice_subscribeToCommands().
      * The arguments for this API are commandName, format, QoS
      * If you want to subscribe to all commands of any format, set commandName and format to "+"
      */
+    
     char *commandName = "+";
     char *format = "+";
     IoTPDevice_subscribeToCommands(device, commandName, format);
+}
 
-
-    /* Use IoTPDevice_sendEvent() API to send device events to Watson IoT Platform. */
-
-    /* Sample event - this sample device will send this event once in every 10 seconds. */
-    char *data = "{\"d\" : {\"SensorID\": \"Test\", \"Reading\": 7 }}";
-
-    while(!interrupt)
-    {
-        fprintf(stdout, "Send status event\n");
-        rc = IoTPDevice_sendEvent(device,"status", data, "json", QoS0, NULL);
-        fprintf(stdout, "RC from publishEvent(): %d\n", rc);
-
-        if ( testCycle > 0 ) {
-            cycle += 1;
-            if ( cycle >= testCycle ) {
-                break;
-            }
-        }
-        sleep(10);
-    }
-
+int disconnect_device(IoTPConfig* config, IoTPDevice* device)
+{
     fprintf(stdout, "Publish event cycle is complete.\n");
 
     /* Disconnect device */
@@ -198,5 +120,4 @@ int main(int argc, char *argv[])
     IoTPConfig_clear(config);
 
     return 0;
-
 }

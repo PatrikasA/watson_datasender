@@ -16,13 +16,6 @@ enum {
 	__INFO_MAX,
 };
 
-struct ram_info{
-    uint64_t total;
-    uint64_t free;
-    uint64_t shared;
-    uint64_t buffered;
-};
-
 static const struct blobmsg_policy memory_policy[__MEMORY_MAX] = {
 	[TOTAL_MEMORY] = { .name = "total", .type = BLOBMSG_TYPE_INT64 },
 	[FREE_MEMORY] = { .name = "free", .type = BLOBMSG_TYPE_INT64 },
@@ -35,7 +28,7 @@ static const struct blobmsg_policy info_policy[__INFO_MAX] = {
 };
 
 void memory_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
-	struct ram_info *mem = (struct ram_info *)req->priv;
+	struct blob_buf *mem = (struct ram_info *)req->priv;
 	struct blob_attr *tb[__INFO_MAX];
 	struct blob_attr *memory[__MEMORY_MAX];
 
@@ -50,9 +43,9 @@ void memory_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
 	blobmsg_parse(memory_policy, __MEMORY_MAX, memory,
 			blobmsg_data(tb[MEMORY_DATA]), blobmsg_data_len(tb[MEMORY_DATA]));
 
-	mem -> total = blobmsg_get_u64(memory[TOTAL_MEMORY]);
-	mem -> free = blobmsg_get_u64(memory[FREE_MEMORY]);
-	mem -> shared = blobmsg_get_u64(memory[SHARED_MEMORY]);
-	mem -> buffered = blobmsg_get_u64(memory[BUFFERED_MEMORY]);
+	snprintf((char*)mem, 300, "Total memory: %d Free memory: %d Shared memory: %d Buffered memory: %d ",
+	blobmsg_get_u64(memory[TOTAL_MEMORY]),blobmsg_get_u64(memory[FREE_MEMORY]),blobmsg_get_u64(memory[SHARED_MEMORY]),
+	blobmsg_get_u64(memory[BUFFERED_MEMORY]));
+	
 }
 
