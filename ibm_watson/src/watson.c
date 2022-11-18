@@ -1,8 +1,5 @@
 #include "watson.h"
 
-int useEnv = 0;
-int testCycle = 0;
-
 /* 
  * Device command callback function
  * Device developers can customize this function based on their use case
@@ -34,50 +31,40 @@ void MQTTTraceCallback (int level, char * message)
 }
 
 /* function that sets up connection to device */
-int init(IoTPConfig* config, IoTPDevice* device, char* configFilePath)
+int init(IoTPConfig** config, IoTPDevice** device, char* configFilePath)
 {
     int rc = 0;
     int cycle = 0;
     
     /* Set IoTP Client log handler */
-    
     rc = IoTPConfig_setLogHandler(IoTPLog_FileDescriptor, stdout);
     if ( rc != 0 ) {
         fprintf(stderr, "WARN: Failed to set IoTP Client log handler: rc=%d\n", rc);
         exit(1);
     }
-    
-
-
-    
 
     /* Create IoTPConfig object using configuration options defined in the configuration file. */
-    rc = IoTPConfig_create(&config, configFilePath);
+    rc = IoTPConfig_create(config, configFilePath);
     if ( rc != 0 ) {
         fprintf(stderr, "ERROR: Failed to initialize configuration: rc=%d\n", rc);
         exit(1);
     }
 
-    /* read additional config from environment */
-    if ( useEnv == 1 ) {
-        IoTPConfig_readEnvironment(config);
-    } 
-
     /* Create IoTPDevice object */
-    rc = IoTPDevice_create(&device, config);
+    rc = IoTPDevice_create(device, *config);
     if ( rc != 0 ) {
         fprintf(stderr, "ERROR: Failed to configure IoTP device: rc=%d\n", rc);
         exit(1);
     }
 
     /* Set MQTT Trace handler */
-    rc = IoTPDevice_setMQTTLogHandler(device, &MQTTTraceCallback);
+    rc = IoTPDevice_setMQTTLogHandler(*device, &MQTTTraceCallback);
     if ( rc != 0 ) {
         fprintf(stderr, "WARN: Failed to set MQTT Trace handler: rc=%d\n", rc);
     }
 
     /* Invoke connection API IoTPDevice_connect() to connect to WIoTP. */
-    rc = IoTPDevice_connect(device);
+    rc = IoTPDevice_connect(*device);
     if ( rc != 0 ) {
         fprintf(stderr, "ERROR: Failed to connect to Watson IoT Platform: rc=%d\n", rc);
         fprintf(stderr, "ERROR: Returned error reason: %s\n", IOTPRC_toString(rc));
@@ -89,7 +76,7 @@ int init(IoTPConfig* config, IoTPDevice* device, char* configFilePath)
      * Refer to deviceCommandCallback() function DEV_NOTES for details on
      * how to process device commands received from WIoTP.
      */
-    IoTPDevice_setCommandsHandler(device, deviceCommandCallback);
+    IoTPDevice_setCommandsHandler(*device, deviceCommandCallback);
     
     /*
      * Invoke device command subscription API IoTPDevice_subscribeToCommands().
@@ -99,25 +86,26 @@ int init(IoTPConfig* config, IoTPDevice* device, char* configFilePath)
     
     char *commandName = "+";
     char *format = "+";
-    IoTPDevice_subscribeToCommands(device, commandName, format);
+    IoTPDevice_subscribeToCommands(*device, commandName, format);
 }
 
-int disconnect_device(IoTPConfig* config, IoTPDevice* device)
+int disconnect_device(IoTPConfig** config, IoTPDevice** device)
 {
     fprintf(stdout, "Publish event cycle is complete.\n");
 
     /* Disconnect device */
-    rc = IoTPDevice_disconnect(device);
+    int rc = IoTPDevice_disconnect(*device);
     if ( rc != IOTPRC_SUCCESS ) {
         fprintf(stderr, "ERROR: Failed to disconnect from  Watson IoT Platform: rc=%d\n", rc);
         exit(1);
     }
 
     /* Destroy client */
-    IoTPDevice_destroy(device);
+    IoTPDevice_destroy(*device);
 
     /* Clear configuration */
-    IoTPConfig_clear(config);
-
+    rc = IoTPConfig_clear(*config);
+    if( rc != IOTPRC_SUCCESS)
+        fprintf(stderr, "ERROR: Failed to clear configuration\n");
     return 0;
 }

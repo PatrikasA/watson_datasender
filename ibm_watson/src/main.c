@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <signal.h>
 #include <stdlib.h>
 #include "ubus_ram_handler.h"
@@ -8,8 +9,11 @@ void getopts(int argc, char** argv);
 void usage(void);
 
 volatile sig_atomic_t daemonize = 1;
+int useEnv = 0;
+int testCycle = 0;
 char* program_name = "watson_ram_sender";
 char* configFilePath = NULL;
+
 
 /* Signal handler - to support CTRL-C to quit */
 void sigHandler(int signo) {
@@ -18,16 +22,34 @@ void sigHandler(int signo) {
     daemonize = 0;
 }
 
-int main(int argc char *argv[])
+int main(int argc, char *argv[])
 {
     IoTPConfig* config = NULL;
     IoTPDevice* device = NULL;
 
     int rc = 0;
-    struct ubus_context* context;
+    int cycle = 0;
+    char buffer[300];
+
+    struct ubus_context* ctx;
+    uint32_t id;
 
     signal(SIGINT, sigHandler);
     signal(SIGTERM, sigHandler);
+
+    /* connect to ubus */
+    ctx = ubus_connect(NULL);
+	if (!ctx) {
+		fprintf(stderr, "Failed to connect to ubus\n");
+		exit(1);
+	}
+
+    rc = ubus_lookup_id(ctx, "system", &id);
+    if(rc != 0) {
+        fprintf(stderr, "Failed to lookup id\n");
+        exit(1);
+    }
+
 
     /* check for args */
     if ( argc < 2 )
@@ -36,28 +58,13 @@ int main(int argc char *argv[])
     /* get argument options */
     getopts(argc, argv);
 
-
-
-    /*
-     * Invoke device command subscription API IoTPDevice_subscribeToCommands().
-     * The arguments for this API are commandName, format, QoS
-     * If you want to subscribe to all commands of any format, set commandName and format to "+"
-     */
-    char *commandName = "+";
-    char *format = "+";
-    IoTPDevice_subscribeToCommands(device, commandName, format);
-
-    init(config, device, configFilePath);
-
-    /* Use IoTPDevice_sendEvent() API to send device events to Watson IoT Platform. */
-
-    /* Sample event - this sample device will send this event once in every 10 seconds. */
-    char *data = "{\"d\" : {\"SensorID\": \"Test\", \"Reading\": 7 }}";
+    rc = init(&config, &device, configFilePath);
 
     while(daemonize)
     {
+        rc = ubus_invoke(ctx, id, "info", NULL, memory_cb, &buffer, 3000);
         fprintf(stdout, "Send status event\n");
-        rc = IoTPDevice_sendEvent(device,"status", data, "json", QoS0, NULL);
+        rc = IoTPDevice_sendEvent(device,"status", buffer, "json", QoS0, NULL);
         fprintf(stdout, "RC from publishEvent(): %d\n", rc);
 
         if ( testCycle > 0 ) {
@@ -69,7 +76,7 @@ int main(int argc char *argv[])
         sleep(10);
     }
 
-    disconnect_device(config, device);
+    disconnect_device(&config, &device);
 
     return 0;
 }
@@ -102,7 +109,7 @@ void getopts(int argc, char** argv)
 
 void usage(void) 
 {
-    fprintf(stderr, "Usage: %s --config config_file_path\n", progname);
+    fprintf(stderr, "Usage: %s --config config_file_path\n", program_name);
     exit(1);
 }
 

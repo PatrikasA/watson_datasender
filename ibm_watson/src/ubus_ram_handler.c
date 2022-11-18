@@ -28,7 +28,7 @@ static const struct blobmsg_policy info_policy[__INFO_MAX] = {
 };
 
 void memory_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
-	struct blob_buf *mem = (struct ram_info *)req->priv;
+	struct blob_buf *mem = (struct blob_buf *)req->priv;
 	struct blob_attr *tb[__INFO_MAX];
 	struct blob_attr *memory[__MEMORY_MAX];
 
@@ -43,7 +43,7 @@ void memory_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
 	blobmsg_parse(memory_policy, __MEMORY_MAX, memory,
 			blobmsg_data(tb[MEMORY_DATA]), blobmsg_data_len(tb[MEMORY_DATA]));
 
-	snprintf((char*)mem, 300, "Total memory: %d Free memory: %d Shared memory: %d Buffered memory: %d ",
+	snprintf((char*)mem, 300, "Total memory: %ld Free memory: %ld Shared memory: %ld Buffered memory: %ld ",
 	blobmsg_get_u64(memory[TOTAL_MEMORY]),blobmsg_get_u64(memory[FREE_MEMORY]),blobmsg_get_u64(memory[SHARED_MEMORY]),
 	blobmsg_get_u64(memory[BUFFERED_MEMORY]));
 	

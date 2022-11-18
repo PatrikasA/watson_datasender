@@ -1,3 +1,19 @@
+#!/bin/sh /etc/rc.common
+
+USE_PROCD=1
+
+start_service()
+{
+        local enabled
+
+        if [ "$enabled" -eq 1 ]; then
+                procd_open_instance
+                procd_set_param command /usr/bin/watson_datasender
+                procd_set_param file /etc/config/watson
+                procd_close_instance
+        fi
+}
+
 reload_service()
 {
         stop
