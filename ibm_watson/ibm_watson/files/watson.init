@@ -1,5 +1,0 @@
-reload_service()
-{
-        stop
-        stop
-}
