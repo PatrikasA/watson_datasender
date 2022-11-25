@@ -3,7 +3,15 @@
 #include <memory.h>
 #include <stdlib.h>
 #include <unistd.h>
-#include "/home/studentas/Documents/iot-c/src/wiotp/sdk/iotp_device.h"
+#include <syslog.h>
+#include <iotp_device.h>
 
-int init(IoTPConfig** config, IoTPDevice** device, char* configFilePath);
+struct arguments{
+    char* organizationId;
+    char* deviceId;
+    char* typeId;
+    char* token;
+};
+
+int init(IoTPConfig** config, IoTPDevice** device, struct arguments* args);
 int disconnect_device(IoTPConfig** config, IoTPDevice** device);

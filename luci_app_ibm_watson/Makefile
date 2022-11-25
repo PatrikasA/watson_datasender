@@ -1,6 +1,6 @@
 include $(TOPDIR)/rules.mk
 
-LUCI_TITLE:=Luci example web interface
+LUCI_TITLE:=Luci controller for IBM Watson datasender
 
 include $(TOPDIR)/feeds/luci/luci.mk
 

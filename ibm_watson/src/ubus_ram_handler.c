@@ -32,10 +32,10 @@ void memory_cb(struct ubus_request *req, int type, struct blob_attr *msg) {
 	struct blob_attr *tb[__INFO_MAX];
 	struct blob_attr *memory[__MEMORY_MAX];
 
-	blobmsg_parse(memory_policy, __MEMORY_MAX, memory, blobmsg_data(tb[MEMORY_DATA]), blob_len(tb[MEMORY_DATA]));
+	blobmsg_parse(info_policy, __INFO_MAX, tb, blob_data(msg), blob_len(msg));
 
 	if (!tb[MEMORY_DATA]) {
-		fprintf(stderr, "No memory data received\n");
+		syslog(LOG_ERR, "No memory data received\n");
 		rc=-1;
 		return;
 	}

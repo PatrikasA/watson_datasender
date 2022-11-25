@@ -1,9 +1,9 @@
-BIN:=watson
+BIN:=watson_datasender
 SRC:=$(wildcard *.c)
-LDFLAGS:=-liotp-as-device -lblobmsg_json -lubox -lubus
+LDFLAGS:=-liotp-as-device -lblobmsg_json -lubox -lubus -largp
 OBJS:=$(SRC:.c=.o)
 
-.PHONY all clean
+.PHONY: all clean
 
 all: $(BIN)
 
