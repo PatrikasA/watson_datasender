@@ -7,10 +7,10 @@
 #include <iotp_device.h>
 
 struct arguments{
-    char* organizationId;
-    char* deviceId;
-    char* typeId;
-    char* token;
+    char organizationId[30];
+    char deviceId[30];
+    char typeId[30];
+    char token[30];
 };
 
 int init(IoTPConfig** config, IoTPDevice** device, struct arguments* args);

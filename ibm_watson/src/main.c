@@ -2,6 +2,7 @@
 #include <signal.h>
 #include <stdlib.h>
 #include <argp.h>
+#include <sys/file.h>
 #include "ubus_ram_handler.h"
 #include "watson.h"
 
@@ -15,16 +16,16 @@ static error_t parse_opt(int key, char *arg, struct argp_state *state)
 
     switch(key){
         case 'o':
-                arguments->organizationId = arg;
+                strcpy(arguments->organizationId,arg);
                 break;
         case 't':
-                arguments->typeId = arg;
+                strcpy(arguments->typeId, arg);
                 break;
         case 'd':
-                arguments->deviceId = arg;
+                strcpy(arguments->deviceId, arg);
                 break;
         case 'a':
-                arguments->token = arg;
+                strcpy(arguments->token, arg);
                 break;
         default:
                 return ARGP_ERR_UNKNOWN;
@@ -52,13 +53,21 @@ void sigHandler(int signo) {
 
 int main(int argc, char *argv[])
 {
+    int rc = 0;
+    int pid_file = open("/var/run/watson_datasender.pid", O_CREAT | O_RDWR, 0666);
+    rc = flock(pid_file, LOCK_EX | LOCK_NB);
+    if(rc) {
+        if(EWOULDBLOCK == errno)
+            syslog(LOG_ERR, "Instance already running. Can only run one instance\n");
+        return -1;
+    }
+
     IoTPConfig* config = NULL;
     IoTPDevice* device = NULL;
 
-    int rc = 0;
+    
     char buffer[300];
-    struct arguments* args=NULL;
-    args = (struct arguments *)malloc(sizeof(struct arguments));
+    struct arguments args;
 
     struct ubus_context* ctx = NULL;
     uint32_t id;
@@ -70,34 +79,47 @@ int main(int argc, char *argv[])
     ctx = ubus_connect(NULL);
 	if (!ctx) {
 		syslog(LOG_ERR, "Failed to connect to ubus\n");
+        disconnect_device(&config, &device);
+        ubus_free(ctx);
 		exit(1);
 	}
 
     rc = ubus_lookup_id(ctx, "system", &id);
     if(rc != 0) {
         syslog(LOG_ERR, "Failed to lookup id\n");
+        disconnect_device(&config, &device);
+        ubus_free(ctx);
         exit(1);
     }
 
-    args->organizationId = "";
-    args->deviceId = "";
-    args->typeId = "";
-    args->token = "";
+    argp_parse(&argp, argc, argv, 0, 0, &args);
 
-    argp_parse(&argp, argc, argv, 0, 0, args);
+    rc = init(&config, &device, &args);
+    if(rc != 0){
+        syslog(LOG_ERR, "Error initializing. RC = %d",rc);
+        disconnect_device(&config, &device);
+        ubus_free(ctx);
+        exit(1);
+    }
 
-    rc = init(&config, &device, args);
     while(daemonize)
     {
-        rc = ubus_invoke(ctx, id, "info", NULL, memory_cb, &buffer, 3000);
+        struct memory_info mem;  
+        rc = ubus_invoke(ctx, id, "info", NULL, memory_cb, &mem, 3000); 
+        if(rc != 0){
+            syslog(LOG_ERR, "ERROR: Failed to invoke ubus");
+            sleep(5);
+            continue;
+        }       
+        char data[300];
+        format_memory_info(mem, data, 300);
+
         syslog(LOG_INFO, "Send status event\n");
-        rc = IoTPDevice_sendEvent(device,"status", buffer, "json", QoS0, NULL);
+        rc = IoTPDevice_sendEvent(device,"status", data, "json", QoS1, NULL);
         syslog(LOG_INFO, "RC from publishEvent(): %d\n", rc);
         sleep(10);
     }
 
     disconnect_device(&config, &device);
     ubus_free(ctx);
-    free(args);
-    return 0;
 }

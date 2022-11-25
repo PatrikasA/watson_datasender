@@ -21,14 +21,14 @@ int init(IoTPConfig** config, IoTPDevice** device, struct arguments* args)
     rc = IoTPConfig_setLogHandler(IoTPLog_FileDescriptor, stdout);
     if ( rc != 0 ) {
         syslog(LOG_ERR, "WARN: Failed to set IoTP Client log handler: rc=%d\n", rc);
-        exit(1);
+        return -1;
     }
 
     /* Create IoTPConfig object using configuration options defined in the configuration file. */
     rc = IoTPConfig_create(config, NULL);
     if ( rc != 0 ) {
         syslog(LOG_ERR, "ERROR: Failed to initialize configuration: rc=%d\n", rc);
-        exit(1);
+        return -1;
     }
 
     /* set config properties received from argp */
@@ -43,7 +43,7 @@ int init(IoTPConfig** config, IoTPDevice** device, struct arguments* args)
     rc = IoTPDevice_create(device, *config);
     if ( rc != 0 ) {
         syslog(LOG_ERR, "ERROR: Failed to configure IoTP device: rc=%d\n", rc);
-        exit(1);
+        return -1;
     }
 
     /* Set MQTT Trace handler */
@@ -57,29 +57,32 @@ int init(IoTPConfig** config, IoTPDevice** device, struct arguments* args)
     if ( rc != 0 ) {
         syslog(LOG_ERR, "ERROR: Failed to connect to Watson IoT Platform: rc=%d\n", rc);
         syslog(LOG_ERR, "ERROR: Returned error reason: %s\n", IOTPRC_toString(rc));
-        exit(1);
+        return -1;
     }
 
-    return 0;
+    return rc;
 }
 
 int disconnect_device(IoTPConfig** config, IoTPDevice** device)
 {
-    syslog(LOG_INFO, "Publish event cycle is complete.\n");
+    int rc = 0;
+    syslog(LOG_INFO, "Disconnecting device...\n");
 
     /* Disconnect device */
-    int rc = IoTPDevice_disconnect(*device);
-    if ( rc != IOTPRC_SUCCESS ) {
-        syslog(LOG_ERR, "ERROR: Failed to disconnect from  Watson IoT Platform: rc=%d\n", rc);
-        exit(1);
+    if(*device != NULL){
+        rc = IoTPDevice_disconnect(*device);
+        if ( rc != IOTPRC_SUCCESS ) {
+            syslog(LOG_ERR, "ERROR: Failed to disconnect from  Watson IoT Platform: rc=%d\n", rc);
+        }
+        /* Destroy client */
+        IoTPDevice_destroy(*device);
     }
-
-    /* Destroy client */
-    IoTPDevice_destroy(*device);
-
+  
     /* Clear configuration */
-    rc = IoTPConfig_clear(*config);
-    if( rc != IOTPRC_SUCCESS)
-        syslog(LOG_ERR, "ERROR: Failed to clear configuration\n");
-    return 0;
+    if(*config != NULL){
+        rc = IoTPConfig_clear(*config);
+        if( rc != IOTPRC_SUCCESS)
+            syslog(LOG_ERR, "ERROR: Failed to clear configuration\n");
+        }
+    return rc;
 }
