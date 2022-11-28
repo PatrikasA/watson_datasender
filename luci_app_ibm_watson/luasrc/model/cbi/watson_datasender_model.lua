@@ -8,4 +8,5 @@ typeId = section:option(Value, "typeId", "Type Id")
 deviceId = section:option(Value, "deviceId", "Device Id")
 token = section:option(Value, "token", "Authentication token")
 token.datatype = "string"
+token.maxLength = 30
 return map

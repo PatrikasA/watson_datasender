@@ -8,18 +8,14 @@ start_service()
         
         config_load 'watson'
         config_get enabled watson_datasender_scp 'enable' '0'
-        
-
-	
 	
         if [ "$enabled" -eq 1 ]; then
-        
-                config_get orgId watson_datasender_sct orgId
-        	config_get typeId watson_datasender_sct typeId
-        	config_get deviceId watson_datasender_sct deviceId
-		config_get token watson_datasender_sct token
+                config_get orgId watson_datasender_scp orgId
+        	config_get typeId watson_datasender_scp typeId
+        	config_get deviceId watson_datasender_scp deviceId
+		config_get token watson_datasender_scp token
                 procd_open_instance
-                procd_set_param command /usr/bin/watson_datasender -o "$orgId" -t "$typeID" -d "$deviceID" -a "$token"
+                procd_set_param command /usr/bin/watson_datasender -o "$orgId" -t "$typeId" -d "$deviceId" -a "$token"
                 procd_set_param file /etc/config/watson
                 procd_close_instance
         fi
