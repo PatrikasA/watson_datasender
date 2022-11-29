@@ -6,6 +6,9 @@
 #include <syslog.h>
 #include <iotp_device.h>
 
+#ifndef WATSON_H
+#define WATSON_H
+
 struct arguments{
     char organizationId[30];
     char deviceId[30];
@@ -15,3 +18,5 @@ struct arguments{
 
 int init(IoTPConfig** config, IoTPDevice** device, struct arguments* args);
 int disconnect_device(IoTPConfig** config, IoTPDevice** device);
+
+#endif
