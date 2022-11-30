@@ -13,7 +13,7 @@ void MQTTTraceCallback (int level, char * message)
 }
 
 /* function that sets up connection to device */
-int init(IoTPConfig** config, IoTPDevice** device, struct arguments* args)
+int init_watson(IoTPConfig** config, IoTPDevice** device, struct arguments* args)
 {
     int rc = 0;
     
@@ -84,5 +84,24 @@ int disconnect_device(IoTPConfig** config, IoTPDevice** device)
         if( rc != IOTPRC_SUCCESS)
             syslog(LOG_ERR, "ERROR: Failed to clear configuration\n");
         }
+    return rc;
+}
+
+int watson_loop(struct ubus_context* ctx, uint32_t id, IoTPDevice* device)
+{
+    int rc = 0;
+    struct memory_info mem;
+    char data[300];
+    rc = ubus_invoke(ctx, id, "info", NULL, memory_cb, &mem, 3000); 
+    if(rc != 0){
+        syslog(LOG_ERR, "ERROR: Failed to get data from ubus");
+        return rc;
+    }       
+    
+    format_memory_info(mem, data, 300);
+
+    syslog(LOG_INFO, "Send status event\n");
+    rc = IoTPDevice_sendEvent(device,"status", data, "json", QoS1, NULL);
+    syslog(LOG_INFO, "RC from publishEvent(): %d\n", rc);
     return rc;
 }
